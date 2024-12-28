@@ -392,28 +392,6 @@ fun getPastWeekDates(): List<String> {
     }
     return dates
 }
-
-// Використовуємо стандартний IncomeDatePickerDialog для вибору дати
-@Composable
-fun IncomeDatePickerDialogComponent(onDateSelected: (String) -> Unit) {
-    val context = LocalContext.current
-    val calendar = Calendar.getInstance()
-    val year = calendar.get(Calendar.YEAR)
-    val month = calendar.get(Calendar.MONTH)
-    val day = calendar.get(Calendar.DAY_OF_MONTH)
-    val IncomeDatePickerDialog = DatePickerDialog(
-        context,
-        { _, selectedYear, selectedMonth, selectedDay ->
-            val formattedDate = "$selectedDay/${selectedMonth + 1}/$selectedYear"
-            onDateSelected(formattedDate)
-        },
-        year, month, day
-    )
-    // Викликаємо метод show() через LaunchedEffect
-    LaunchedEffect(Unit) {
-        IncomeDatePickerDialog.show()
-    }
-}
 @Composable
 fun IncomeTransactionItem(
     transaction: Transaction,
