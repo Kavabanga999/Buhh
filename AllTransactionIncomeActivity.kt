@@ -28,13 +28,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.example.homeaccountingapp.ui.theme.HomeAccountingAppTheme
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+
 
 class AllTransactionIncomeActivity : ComponentActivity() {
     private val viewModel: IncomeViewModel by viewModels { IncomeViewModelFactory(application) }
