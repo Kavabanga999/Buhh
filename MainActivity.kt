@@ -260,21 +260,6 @@ class MainViewModel : ViewModel() {
         val updateIntent = Intent("com.example.homeaccountingapp.UPDATE_INCOME")
         LocalBroadcastManager.getInstance(context).sendBroadcast(updateIntent)
     }
-    // Додамо функцію для отримання поточної дати у форматі "yyyy-MM-dd"
-    fun formatDate(date: String, inputFormat: String, outputFormat: String): String {
-        val inputDateFormat = SimpleDateFormat(inputFormat, Locale.getDefault())
-        val outputDateFormat = SimpleDateFormat(outputFormat, Locale.getDefault())
-        val parsedDate = inputDateFormat.parse(date)
-        return outputDateFormat.format(parsedDate)
-    }
-
-    // Додамо функцію для отримання поточної дати у форматі "yyyy-MM-dd"
-    fun getCurrentDate(): String {
-        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        return formatter.format(Date())
-    }
-
-
     // Допоміжний метод для перерахунку витрат за категоріями
     private fun calculateExpenses(transactions: List<Transaction>): Map<String, Double> {
         return transactions.groupBy { it.category }.mapValues { (_, transactions) ->
@@ -364,11 +349,11 @@ fun MainScreen(
             DrawerContent(
                 onNavigateToIncomes = { scope.launch { drawerState.close(); onNavigateToIncomes() } },
                 onNavigateToExpenses = { scope.launch { drawerState.close(); onNavigateToExpenses() } },
-                onNavigateToAllTransactionIncome = { scope.launch { drawerState.close(); onNavigateToAllTransactionIncome() } },
-                onNavigateToAllTransactionExpense = { scope.launch { drawerState.close(); onNavigateToAllTransactionExpense() } },
                 onNavigateToIssuedOnLoan = { scope.launch { drawerState.close(); onNavigateToIssuedOnLoan() } },
                 onNavigateToBorrowed = { scope.launch { drawerState.close(); onNavigateToBorrowed() } },
-                onNavigateToBudgetPlanning = { scope.launch { drawerState.close(); onNavigateToBudgetPlanning() } }
+                onNavigateToAllTransactionIncome = { scope.launch { drawerState.close(); onNavigateToAllTransactionIncome() } },
+                onNavigateToAllTransactionExpense = { scope.launch { drawerState.close(); onNavigateToAllTransactionExpense() } },
+                onNavigateToBudgetPlanning = { scope.launch { drawerState.close(); onNavigateToBudgetPlanning() } } // Додано
             )
         }
     ) {
@@ -1004,45 +989,11 @@ fun DrawerContent(
             )
             Spacer(modifier = Modifier.height(8.dp))
             CategoryItem(
-                text = "Всі транзакції доходів",
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_income),
-                        contentDescription = "Іконка всіх транзакцій доходів",
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
-                    )
-                },
-                onClick = onNavigateToAllTransactionIncome,
-                gradientColors = listOf(
-                    Color(0xFF000000).copy(alpha = 0.7f),
-                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CategoryItem(
-                text = "Всі транзакції витрат",
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_expense),
-                        contentDescription = "Іконка всіх транзакцій витрат",
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
-                    )
-                },
-                onClick = onNavigateToAllTransactionExpense,
-                gradientColors = listOf(
-                    Color(0xFF000000).copy(alpha = 0.7f),
-                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CategoryItem(
                 text = "Видано в борг",
                 icon = {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_loan_issued),
-                        contentDescription = "Іконка виданих в борг",
+                        contentDescription = "Іконка виданих боргів",
                         tint = Color.White,
                         modifier = Modifier.size(iconSize)
                     )
@@ -1059,7 +1010,7 @@ fun DrawerContent(
                 icon = {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_loan_borrowed),
-                        contentDescription = "Іконка отриманих в борг",
+                        contentDescription = "Іконка отриманих боргів",
                         tint = Color.White,
                         modifier = Modifier.size(iconSize)
                     )
@@ -1071,6 +1022,41 @@ fun DrawerContent(
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
+            CategoryItem(
+                text = "Всі транзакції доходів",
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_all_income_transactions),
+                        contentDescription = "Іконка всіх транзакцій доходів",
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                onClick = onNavigateToAllTransactionIncome,
+                gradientColors = listOf(
+                    Color(0xFF000000).copy(alpha = 0.7f),
+                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            CategoryItem(
+                text = "Всі транзакції витрат",
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_all_expense_transactions),
+                        contentDescription = "Іконка всіх транзакцій витрат",
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                onClick = onNavigateToAllTransactionExpense,
+                gradientColors = listOf(
+                    Color(0xFF000000).copy(alpha = 0.7f),
+                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            // Додано новий пункт меню
             CategoryItem(
                 text = "Планування бюджету",
                 icon = {
