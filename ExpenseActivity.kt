@@ -200,19 +200,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(updateIntent)
     }
 
-    // Додамо функцію для отримання поточної дати у форматі "yyyy-MM-dd"
-    fun formatDate(date: String, inputFormat: String, outputFormat: String): String {
-        val inputDateFormat = SimpleDateFormat(inputFormat, Locale.getDefault())
-        val outputDateFormat = SimpleDateFormat(outputFormat, Locale.getDefault())
-        val parsedDate = inputDateFormat.parse(date)
-        return outputDateFormat.format(parsedDate)
-    }
-
-    fun getCurrentDate(): String {
-        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        return formatter.format(Date())
-    }
-
     fun deleteCategory(category: String) {
         categories = categories.filter { it != category }
         _transactions.value = _transactions.value?.filter { it.category != category }
