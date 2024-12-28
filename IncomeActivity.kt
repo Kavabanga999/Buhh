@@ -181,21 +181,6 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
         val updateIntent = Intent("com.example.homeaccountingapp.UPDATE_INCOME")
         LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(updateIntent)
     }
-
-    // Додамо функцію для отримання поточної дати у форматі "yyyy-MM-dd"
-    fun formatDate(date: String, inputFormat: String, outputFormat: String): String {
-        val inputDateFormat = SimpleDateFormat(inputFormat, Locale.getDefault())
-        val outputDateFormat = SimpleDateFormat(outputFormat, Locale.getDefault())
-        val parsedDate = inputDateFormat.parse(date)
-        return outputDateFormat.format(parsedDate)
-    }
-
-    fun getCurrentDate(): String {
-        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        return formatter.format(Date())
-    }
-
-
     fun incomeDeleteCategory(category: String) {
         categories = categories.filter { it != category }
         IncomeTransactions = IncomeTransactions.filter { it.category != category }
