@@ -370,13 +370,6 @@ fun AddTransactionDialog(
         containerColor = Color.DarkGray
     )
 }
-// Функція для отримання поточної дати у форматі "yyyy-MM-dd"
-fun formatDate(date: String, inputFormat: String, outputFormat: String): String {
-    val inputDateFormat = SimpleDateFormat(inputFormat, Locale.getDefault())
-    val outputDateFormat = SimpleDateFormat(outputFormat, Locale.getDefault())
-    val parsedDate = inputDateFormat.parse(date)
-    return outputDateFormat.format(parsedDate)
-}
 
 fun getCurrentDate(): String {
     val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
