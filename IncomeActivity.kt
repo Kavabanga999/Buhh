@@ -878,6 +878,7 @@ fun IncomeAddIncomeTransactionDialog(
     }
 }
 data class IncomeTransaction(
+    val id: String = UUID.randomUUID().toString(),
     val category: String,
     val amount: Double,
     val date: String,
