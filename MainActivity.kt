@@ -58,6 +58,8 @@ import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -801,12 +803,22 @@ fun ExpandableButtonWithAmount(
                 fontWeight = FontWeight.Bold, // Жирний текст
                 fontSize = 18.sp // Розмір шрифту для тексту
             )
-            Text(
-                text = "${"%.2f".format(amount)} грн", // Форматування суми
-                color = Color.White,
-                fontWeight = FontWeight.Bold, // Жирний текст
-                fontSize = 18.sp // Розмір шрифту для суми
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${"%.2f".format(amount)} грн", // Форматування суми
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold, // Жирний текст
+                    fontSize = 18.sp // Розмір шрифту для суми
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+            }
         }
     }
 }
@@ -927,10 +939,10 @@ fun CategoryItem(
 fun DrawerContent(
     onNavigateToIncomes: () -> Unit,
     onNavigateToExpenses: () -> Unit,
-    onNavigateToIssuedOnLoan: () -> Unit,
-    onNavigateToBorrowed: () -> Unit,
     onNavigateToAllTransactionIncome: () -> Unit,
     onNavigateToAllTransactionExpense: () -> Unit,
+    onNavigateToIssuedOnLoan: () -> Unit,
+    onNavigateToBorrowed: () -> Unit,
     onNavigateToBudgetPlanning: () -> Unit // Додано
 ) {
     val configuration = LocalConfiguration.current
@@ -989,40 +1001,6 @@ fun DrawerContent(
             )
             Spacer(modifier = Modifier.height(8.dp))
             CategoryItem(
-                text = "Видано в борг",
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_loan_issued),
-                        contentDescription = "Іконка виданих боргів",
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
-                    )
-                },
-                onClick = onNavigateToIssuedOnLoan,
-                gradientColors = listOf(
-                    Color(0xFF000000).copy(alpha = 0.7f),
-                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CategoryItem(
-                text = "Отримано в борг",
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_loan_borrowed),
-                        contentDescription = "Іконка отриманих боргів",
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
-                    )
-                },
-                onClick = onNavigateToBorrowed,
-                gradientColors = listOf(
-                    Color(0xFF000000).copy(alpha = 0.7f),
-                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CategoryItem(
                 text = "Всі транзакції доходів",
                 icon = {
                     Icon(
@@ -1056,6 +1034,42 @@ fun DrawerContent(
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
+            CategoryItem(
+                text = "Видано в борг",
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_loan_issued),
+                        contentDescription = "Іконка виданих боргів",
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                onClick = onNavigateToIssuedOnLoan,
+                gradientColors = listOf(
+                    Color(0xFF000000).copy(alpha = 0.7f),
+                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            CategoryItem(
+                text = "Отримано в борг",
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_loan_borrowed),
+                        contentDescription = "Іконка отриманих боргів",
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                onClick = onNavigateToBorrowed,
+                gradientColors = listOf(
+                    Color(0xFF000000).copy(alpha = 0.7f),
+                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+
             // Додано новий пункт меню
             CategoryItem(
                 text = "Планування бюджету",
