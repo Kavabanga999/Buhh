@@ -911,6 +911,7 @@ fun AddTransactionDialog(
     }
 }
 data class Transaction(
+    val id: String = UUID.randomUUID().toString(), // Додаємо унікальний ідентифікатор
     val category: String,
     val amount: Double,
     val date: String,
