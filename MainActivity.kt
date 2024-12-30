@@ -939,10 +939,10 @@ fun CategoryItem(
 fun DrawerContent(
     onNavigateToIncomes: () -> Unit,
     onNavigateToExpenses: () -> Unit,
-    onNavigateToAllTransactionIncome: () -> Unit,
-    onNavigateToAllTransactionExpense: () -> Unit,
     onNavigateToIssuedOnLoan: () -> Unit,
     onNavigateToBorrowed: () -> Unit,
+    onNavigateToAllTransactionIncome: () -> Unit,
+    onNavigateToAllTransactionExpense: () -> Unit,
     onNavigateToBudgetPlanning: () -> Unit // Додано
 ) {
     val configuration = LocalConfiguration.current
@@ -1001,40 +1001,6 @@ fun DrawerContent(
             )
             Spacer(modifier = Modifier.height(8.dp))
             CategoryItem(
-                text = "Всі транзакції доходів",
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_all_income_transactions),
-                        contentDescription = "Іконка всіх транзакцій доходів",
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
-                    )
-                },
-                onClick = onNavigateToAllTransactionIncome,
-                gradientColors = listOf(
-                    Color(0xFF000000).copy(alpha = 0.7f),
-                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CategoryItem(
-                text = "Всі транзакції витрат",
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_all_expense_transactions),
-                        contentDescription = "Іконка всіх транзакцій витрат",
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
-                    )
-                },
-                onClick = onNavigateToAllTransactionExpense,
-                gradientColors = listOf(
-                    Color(0xFF000000).copy(alpha = 0.7f),
-                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CategoryItem(
                 text = "Видано в борг",
                 icon = {
                     Icon(
@@ -1068,8 +1034,40 @@ fun DrawerContent(
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
-
-
+            CategoryItem(
+                text = "Всі транзакції доходів",
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_all_income_transactions),
+                        contentDescription = "Іконка всіх транзакцій доходів",
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                onClick = onNavigateToAllTransactionIncome,
+                gradientColors = listOf(
+                    Color(0xFF000000).copy(alpha = 0.7f),
+                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            CategoryItem(
+                text = "Всі транзакції витрат",
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_all_expense_transactions),
+                        contentDescription = "Іконка всіх транзакцій витрат",
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                onClick = onNavigateToAllTransactionExpense,
+                gradientColors = listOf(
+                    Color(0xFF000000).copy(alpha = 0.7f),
+                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             // Додано новий пункт меню
             CategoryItem(
                 text = "Планування бюджету",
