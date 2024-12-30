@@ -1001,40 +1001,6 @@ fun DrawerContent(
             )
             Spacer(modifier = Modifier.height(8.dp))
             CategoryItem(
-                text = "Видано в борг",
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_loan_issued),
-                        contentDescription = "Іконка виданих боргів",
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
-                    )
-                },
-                onClick = onNavigateToIssuedOnLoan,
-                gradientColors = listOf(
-                    Color(0xFF000000).copy(alpha = 0.7f),
-                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CategoryItem(
-                text = "Отримано в борг",
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_loan_borrowed),
-                        contentDescription = "Іконка отриманих боргів",
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
-                    )
-                },
-                onClick = onNavigateToBorrowed,
-                gradientColors = listOf(
-                    Color(0xFF000000).copy(alpha = 0.7f),
-                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CategoryItem(
                 text = "Всі транзакції доходів",
                 icon = {
                     Icon(
@@ -1062,6 +1028,40 @@ fun DrawerContent(
                     )
                 },
                 onClick = onNavigateToAllTransactionExpense,
+                gradientColors = listOf(
+                    Color(0xFF000000).copy(alpha = 0.7f),
+                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            CategoryItem(
+                text = "Видано в борг",
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_loan_issued),
+                        contentDescription = "Іконка виданих боргів",
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                onClick = onNavigateToIssuedOnLoan,
+                gradientColors = listOf(
+                    Color(0xFF000000).copy(alpha = 0.7f),
+                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            CategoryItem(
+                text = "Отримано в борг",
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_loan_borrowed),
+                        contentDescription = "Іконка отриманих боргів",
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                onClick = onNavigateToBorrowed,
                 gradientColors = listOf(
                     Color(0xFF000000).copy(alpha = 0.7f),
                     Color(0xFF2E2E2E).copy(alpha = 0.7f)
