@@ -31,6 +31,7 @@ import com.example.homeaccountingapp.ui.theme.HomeAccountingAppTheme
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -41,11 +42,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.example.homeaccountingapp.DateUtils
 
-
-
 class IncomeTransactionActivity : ComponentActivity() {
     private val viewModel: IncomeViewModel by viewModels { IncomeViewModelFactory(application) }
-    private lateinit var transactions: MutableList<IncomeTransaction>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,9 +51,9 @@ class IncomeTransactionActivity : ComponentActivity() {
         val gson = Gson()
         val incomesharedPreferences = getSharedPreferences("IncomePrefs", MODE_PRIVATE)
         val transactionsJson = incomesharedPreferences.getString("IncomeTransactions", "[]") ?: "[]"
-        val type = object : TypeToken<List<IncomeTransaction>>() {}.type
-        transactions = gson.fromJson<List<IncomeTransaction>>(transactionsJson, type).toMutableList()
-        val filteredTransactions = transactions.filter { it.category == categoryName }.toMutableList()
+        val type = object : TypeToken<List<Transaction>>() {}.type
+        val transactions: List<Transaction> = gson.fromJson(transactionsJson, type)
+        val filteredTransactions = transactions.filter { it.category == categoryName }
         setContent {
             HomeAccountingAppTheme {
                 IncomeTransactionScreen(
@@ -69,14 +67,14 @@ class IncomeTransactionActivity : ComponentActivity() {
         }
     }
 
-    private fun saveTransactionsIncome(updatedTransactions: List<IncomeTransaction>, categoryName: String) {
+    private fun saveTransactionsIncome(updatedTransactions: List<Transaction>, categoryName: String) {
         val incomesharedPreferences = getSharedPreferences("IncomePrefs", MODE_PRIVATE)
         val gson = Gson()
 
         val existingTransactions = try {
             val transactionsJson = incomesharedPreferences.getString("IncomeTransactions", "[]") ?: "[]"
-            val type = object : TypeToken<List<IncomeTransaction>>() {}.type
-            gson.fromJson<List<IncomeTransaction>>(transactionsJson, type)
+            val type = object : TypeToken<List<Transaction>>() {}.type
+            gson.fromJson<List<Transaction>>(transactionsJson, type)
         } catch (e: Exception) {
             emptyList()
         }
@@ -92,20 +90,15 @@ class IncomeTransactionActivity : ComponentActivity() {
         val updateIntent = Intent("com.example.homeaccountingapp.UPDATE_INCOME")
         LocalBroadcastManager.getInstance(this).sendBroadcast(updateIntent)
     }
-
-    private fun deleteTransaction(transaction: IncomeTransaction, onUpdateTransactions: (List<IncomeTransaction>) -> Unit) {
-        transactions = transactions.filter { it.id != transaction.id }.toMutableList() // Використовуємо id для порівняння
-        onUpdateTransactions(transactions)
-    }
 }
 @Composable
 fun IncomeTransactionScreen(
     categoryName: String,
-    initialTransactions: List<IncomeTransaction>,
-    onUpdateTransactions: (List<IncomeTransaction>) -> Unit
+    initialTransactions: List<Transaction>,
+    onUpdateTransactions: (List<Transaction>) -> Unit
 ) {
     var transactions by remember { mutableStateOf(initialTransactions.toMutableList()) }
-    var selectedTransaction by remember { mutableStateOf<IncomeTransaction?>(null) }
+    var selectedTransaction by remember { mutableStateOf<Transaction?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
     var showMenuDialog by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -205,7 +198,7 @@ fun IncomeTransactionScreen(
                     item {
                         Divider(color = Color.Gray, thickness = 1.dp, modifier = Modifier.padding(vertical = 8.dp))
                         Text(
-                            text = "Інші транзакції",
+                            text = "",
                             style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White),
                             modifier = Modifier.padding(16.dp)
                         )
@@ -232,7 +225,7 @@ fun IncomeTransactionScreen(
                     showEditDialog = true
                 },
                 onDelete = {
-                    transactions = transactions.filter { it.id != selectedTransaction!!.id }.toMutableList()
+                    transactions = transactions.filter { it != selectedTransaction }.toMutableList()
                     onUpdateTransactions(transactions)
                     showMenuDialog = false
                 }
@@ -244,7 +237,7 @@ fun IncomeTransactionScreen(
                 onDismiss = { showEditDialog = false },
                 onSave = { updatedTransaction ->
                     transactions = transactions.map {
-                        if (it.id == selectedTransaction!!.id) updatedTransaction else it
+                        if (it == selectedTransaction) updatedTransaction else it
                     }.toMutableList()
                     onUpdateTransactions(transactions)
                     showEditDialog = false
@@ -264,7 +257,7 @@ fun IncomeTransactionScreen(
             IncomeAddTransactionDialog(
                 onDismiss = { showAddDialog = false },
                 onSave = { newTransaction ->
-                    transactions = (transactions + newTransaction) as MutableList<IncomeTransaction>
+                    transactions = (transactions + newTransaction) as MutableList<Transaction>
                     onUpdateTransactions(transactions)
                     showAddDialog = false
                 },
@@ -273,6 +266,7 @@ fun IncomeTransactionScreen(
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IncomeAddTransactionDialog(
@@ -398,9 +392,10 @@ fun getPastWeekDates(): List<String> {
     }
     return dates
 }
+
 @Composable
 fun IncomeTransactionItem(
-    transaction: IncomeTransaction,
+    transaction: Transaction,
     onClick: () -> Unit
 ) {
     Box(
@@ -447,10 +442,9 @@ fun IncomeTransactionItem(
         }
     }
 }
-
 @Composable
 fun IncomeEditDeleteDialog(
-    transaction: IncomeTransaction,
+    transaction: Transaction,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -496,13 +490,12 @@ fun IncomeEditDeleteDialog(
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IncomeEditTransactionDialog(
-    transaction: IncomeTransaction,
+    transaction: Transaction,
     onDismiss: () -> Unit,
-    onSave: (IncomeTransaction) -> Unit
+    onSave: (Transaction) -> Unit
 ) {
     var updatedAmount by remember { mutableStateOf(transaction.amount.toString()) }
     var updatedDate by remember { mutableStateOf(transaction.date) }
@@ -593,7 +586,8 @@ fun IncomeEditTransactionDialog(
             ) {
                 Text("Зберегти", style = MaterialTheme.typography.bodyLarge)
             }
-        },
+        }
+        ,
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Скасувати", color = Color.White)
@@ -602,7 +596,6 @@ fun IncomeEditTransactionDialog(
         containerColor = Color.DarkGray
     )
 }
-
 @Composable
 fun IncomeDatePickerDialog(
     onDismiss: () -> Unit,
