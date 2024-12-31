@@ -163,7 +163,7 @@ fun ExpenseTransactionScreen(
                 if (todayTransactions.isNotEmpty()) {
                     item {
                         Text(
-                            text = "Сьогоднішні транзакції",
+                            text = "Транзакції за сьогодні",
                             style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White),
                             modifier = Modifier.padding(16.dp)
                         )
