@@ -112,6 +112,9 @@ class ExpenseActivity : ComponentActivity() {
             }
         }
 
+        // Встановлення функції після створення ViewModel
+        viewModel.setSendUpdateBroadcast { sendUpdateBroadcast() }
+
         // Ініціалізація BroadcastReceiver для оновлення даних
         updateReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -147,7 +150,6 @@ class ExpenseActivity : ComponentActivity() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(updateReceiver)
     }
 }
-
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferences = application.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
     private val gson = Gson()
@@ -158,8 +160,16 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     var totalExpense by mutableStateOf(0.0)
     private val mainViewModel: MainViewModel = MainViewModel() // Додайте це для доступу до MainViewModel
 
+    // Створення властивості для зберігання функції
+    private var sendUpdateBroadcast: (() -> Unit)? = null
+
     init {
         loadData()
+    }
+
+    // Метод для встановлення функції
+    fun setSendUpdateBroadcast(sendUpdateBroadcast: () -> Unit) {
+        this.sendUpdateBroadcast = sendUpdateBroadcast
     }
 
     // Функція для завантаження даних
@@ -185,6 +195,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         categories = newCategories
         saveCategories(categories)
         updateExpenses()  // Оновлення витрат після зміни категорій
+        sendUpdateBroadcast?.invoke() // Виклик функції для відправки broadcast
     }
 
     fun updateTransactions(newTransactions: List<Transaction>) {
