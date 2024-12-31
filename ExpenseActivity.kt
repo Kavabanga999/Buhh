@@ -78,11 +78,18 @@ class ExpenseActivity : ComponentActivity() {
         ExpenseViewModelFactory(application)
     }
     private lateinit var updateReceiver: BroadcastReceiver
+    private val standardCategories = listOf("Продукти", "Транспорт", "Розваги", "Здоров'я")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate() called")
         sharedPreferences = getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
+
+        // Ініціалізація категорій при першому запуску
+        if (sharedPreferences.getString("categories", null) == null) {
+            saveCategories(standardCategories)
+        }
+
         loadExpensesFromSharedPreferences()
 
         transactionResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -145,9 +152,18 @@ class ExpenseActivity : ComponentActivity() {
         Log.d("ExpenseActivity", "Updated expenses: $expenseMap")
     }
 
+    private fun saveCategories(categories: List<String>) {
+        Log.d(TAG, "Saving categories: $categories")  // Логування перед збереженням
+        sharedPreferences.edit().putString("categories", gson.toJson(categories)).apply()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         LocalBroadcastManager.getInstance(this).unregisterReceiver(updateReceiver)
+    }
+
+    companion object {
+        private const val TAG = "ExpenseActivity"
     }
 }
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
