@@ -81,15 +81,13 @@ class ExpenseActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate() called")
         sharedPreferences = getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
         loadExpensesFromSharedPreferences()
 
         transactionResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
-                viewModel.loadData()  // Оновлення даних після редагування транзакцій
+                viewModel.loadData()
                 sendUpdateBroadcast()
-                Log.d(TAG, "Data updated after transaction edit")
             }
         }
 
@@ -112,14 +110,12 @@ class ExpenseActivity : ComponentActivity() {
             }
         }
 
-        // Встановлення функції після створення ViewModel
         viewModel.setSendUpdateBroadcast { sendUpdateBroadcast() }
 
-        // Ініціалізація BroadcastReceiver для оновлення даних
         updateReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                when (intent.action) {
-                    "com.example.homeaccountingapp.UPDATE_EXPENSES" -> viewModel.loadData()
+                if (intent.action == "com.example.homeaccountingapp.UPDATE_EXPENSES") {
+                    viewModel.loadData()
                 }
             }
         }
@@ -133,16 +129,13 @@ class ExpenseActivity : ComponentActivity() {
     }
 
     private fun loadExpensesFromSharedPreferences() {
-        val sharedPreferences = getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
         val expensesJson = sharedPreferences.getString("expenses", null)
-        Log.d("ExpenseActivity", "Loaded expenses JSON: $expensesJson")
         val expenseMap: Map<String, Double> = if (expensesJson != null) {
-            Gson().fromJson(expensesJson, object : TypeToken<Map<String, Double>>() {}.type)
+            gson.fromJson(expensesJson, object : TypeToken<Map<String, Double>>() {}.type)
         } else {
             emptyMap()
         }
-        viewModel.updateExpenses(expenseMap)  // Оновлення витрат в ViewModel
-        Log.d("ExpenseActivity", "Updated expenses: $expenseMap")
+        viewModel.updateExpenses(expenseMap)
     }
 
     override fun onDestroy() {
@@ -154,83 +147,73 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val sharedPreferences = application.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
     private val gson = Gson()
     var categories by mutableStateOf<List<String>>(emptyList())
-    private val _transactions = MutableLiveData<List<Transaction>>()
-    val transactions: LiveData<List<Transaction>> get() = _transactions
+    var transactions by mutableStateOf<List<Transaction>>(emptyList())
     var categoryExpenses by mutableStateOf<Map<String, Double>>(emptyMap())
     var totalExpense by mutableStateOf(0.0)
-    private val mainViewModel: MainViewModel = MainViewModel() // Додайте це для доступу до MainViewModel
+    private val mainViewModel: MainViewModel = MainViewModel()
 
-    // Створення властивості для зберігання функції
     private var sendUpdateBroadcast: (() -> Unit)? = null
 
     init {
         loadData()
     }
 
-    // Метод для встановлення функції
     fun setSendUpdateBroadcast(sendUpdateBroadcast: () -> Unit) {
         this.sendUpdateBroadcast = sendUpdateBroadcast
     }
 
-    // Функція для завантаження даних
     fun loadData() {
         categories = loadCategories()
-        _transactions.value = loadTransactions()
-        updateExpenses()  // Оновлення витрат при завантаженні даних
+        transactions = loadTransactions()
+        updateExpenses()
     }
 
-    // Публічна функція для оновлення витрат
     fun updateExpenses(expenses: Map<String, Double> = emptyMap()) {
-        val currentTransactions = _transactions.value ?: emptyList()
         categoryExpenses = expenses.takeIf { it.isNotEmpty() }
             ?: categories.associateWith { category ->
-                currentTransactions.filter { it.category == category }.sumOf { it.amount }
+                transactions.filter { it.category == category }.sumOf { it.amount }
             }
-        totalExpense = currentTransactions.sumOf { it.amount }
-        // Оновлення витрат у MainViewModel
+        totalExpense = transactions.sumOf { it.amount }
         mainViewModel.saveExpensesToSharedPreferences(getApplication(), categoryExpenses)
     }
 
     fun updateCategories(newCategories: List<String>) {
         categories = newCategories
         saveCategories(categories)
-        updateExpenses()  // Оновлення витрат після зміни категорій
-        sendUpdateBroadcast?.invoke() // Виклик функції для відправки broadcast
+        updateExpenses()
+        sendUpdateBroadcast?.invoke()
     }
 
     fun updateTransactions(newTransactions: List<Transaction>) {
-        _transactions.value = newTransactions.map { transaction ->
+        transactions = newTransactions.map { transaction ->
             val formattedDate = DateUtils.formatDate(transaction.date, "dd/MM/yyyy", "yyyy-MM-dd")
             if (transaction.amount > 0) transaction.copy(amount = -transaction.amount, date = formattedDate)
             else transaction.copy(date = formattedDate)
         }
-        saveTransactions(_transactions.value ?: emptyList())
+        saveTransactions(transactions)
         updateExpenses()
-
-        val updateIntent = Intent("com.example.homeaccountingapp.UPDATE_EXPENSES")
-        LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(updateIntent)
+        sendUpdateBroadcast?.invoke()
     }
 
     fun deleteCategory(category: String) {
         categories = categories.filter { it != category }
-        _transactions.value = _transactions.value?.filter { it.category != category }
-        saveCategories(categories) // Збереження категорій
-        saveTransactions(_transactions.value ?: emptyList()) // Збереження транзакцій
-        updateExpenses()  // Оновлення витрат після видалення категорії
+        transactions = transactions.filter { it.category != category }
+        saveCategories(categories)
+        saveTransactions(transactions)
+        updateExpenses()
     }
 
     fun editCategory(oldCategory: String, newCategory: String) {
         categories = categories.map { if (it == oldCategory) newCategory else it }
-        _transactions.value = _transactions.value?.map {
+        transactions = transactions.map {
             if (it.category == oldCategory) it.copy(category = newCategory) else it
         }
         saveCategories(categories)
-        saveTransactions(_transactions.value ?: emptyList())
-        updateExpenses()  // Оновлення витрат після зміни категорії
+        saveTransactions(transactions)
+        updateExpenses()
     }
 
     private fun saveCategories(categories: List<String>) {
-        Log.d(TAG, "Saving categories: $categories")  // Логування перед збереженням
         sharedPreferences.edit().putString("categories", gson.toJson(categories)).apply()
     }
 
@@ -239,13 +222,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             if (transaction.amount > 0) transaction.copy(amount = -transaction.amount)
             else transaction
         }
-        Log.d(TAG, "Saving transactions: $negativeTransactions")
         sharedPreferences.edit().putString("transactions", gson.toJson(negativeTransactions)).apply()
     }
 
     private fun loadCategories(): List<String> {
         val json = sharedPreferences.getString("categories", null)
-        Log.d(TAG, "Loaded categories: $json")  // Логування при завантаженні
         return if (json != null) {
             gson.fromJson(json, object : TypeToken<List<String>>() {}.type)
         } else {
@@ -255,7 +236,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     private fun loadTransactions(): List<Transaction> {
         val json = sharedPreferences.getString("transactions", null)
-        Log.d(TAG, "Loaded transactions: $json")
         return if (json != null) {
             gson.fromJson<List<Transaction>>(json, object : TypeToken<List<Transaction>>() {}.type)
                 .map { transaction ->
@@ -266,10 +246,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             emptyList()
         }
     }
-
-    companion object {
-        private const val TAG = "ExpenseViewModel"
-    }
 }
 @Composable
 fun ExpenseScreen(
@@ -277,10 +253,10 @@ fun ExpenseScreen(
     onOpenTransactionScreen: (String, String) -> Unit,
     onDeleteCategory: (String) -> Unit
 ) {
-    val categories = viewModel.categories
-    val transactions = viewModel.transactions.observeAsState(initial = emptyList()).value
-    val categoryExpenses = viewModel.categoryExpenses
-    val totalExpense = viewModel.totalExpense
+    val categories by remember { mutableStateOf(viewModel.categories) }
+    val transactions by remember { mutableStateOf(viewModel.transactions) }
+    val categoryExpenses by remember { mutableStateOf(viewModel.categoryExpenses) }
+    val totalExpense by remember { mutableStateOf(viewModel.totalExpense) }
 
     var showEditCategoryDialog by remember { mutableStateOf(false) }
     var categoryToEdit by remember { mutableStateOf<String?>(null) }
@@ -315,7 +291,7 @@ fun ExpenseScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 100.dp) // Додаємо відступ знизу для тексту "Загальні витрати"
+                        .padding(bottom = 100.dp)
                 ) {
                     items(categories) { category ->
                         CategoryRow(
@@ -398,7 +374,7 @@ fun ExpenseScreen(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
-                text = "${totalExpense.formatAmount(2)} грн", // Форматування суми
+                text = "${totalExpense.formatAmount(2)} грн",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = Color.White
             )
@@ -408,20 +384,20 @@ fun ExpenseScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.6f))  // Темний прозорий фон
-                .clickable { showDeleteConfirmationDialog = false }  // Закриваємо діалог при кліку поза ним
+                .background(Color.Black.copy(alpha = 0.6f))
+                .clickable { showDeleteConfirmationDialog = false }
         ) {
             Column(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .background(Color(0xFF1A1A1A).copy(alpha = 0.9f), shape = RoundedCornerShape(12.dp))  // Темний прозорий фон діалогу
+                    .background(Color(0xFF1A1A1A).copy(alpha = 0.9f), shape = RoundedCornerShape(12.dp))
                     .padding(16.dp)
-                    .widthIn(max = 300.dp)  // Зменшення ширини меню
+                    .widthIn(max = 300.dp)
             ) {
                 Text(
                     text = "Ви впевнені, що хочете видалити цю категорію?",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,  // Білий текст
+                    color = Color.White,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 Row(
@@ -432,7 +408,7 @@ fun ExpenseScreen(
                         onClick = {
                             showDeleteConfirmationDialog = false
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4682B4))  // Синій колір кнопки
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4682B4))
                     ) {
                         Text("Ні", color = Color.White)
                     }
@@ -440,11 +416,11 @@ fun ExpenseScreen(
                     Button(
                         onClick = {
                             categoryToDelete?.let {
-                                viewModel.deleteCategory(it)  // Перевірка, що categoryToDelete не null
+                                viewModel.deleteCategory(it)
                             }
                             showDeleteConfirmationDialog = false
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B0000))  // Червоний колір кнопки
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B0000))
                     ) {
                         Text("Так", color = Color.White)
                     }
@@ -457,9 +433,9 @@ fun ExpenseScreen(
             categories = categories,
             onDismiss = { showAddTransactionDialog = false },
             onSave = { transaction ->
-                val updatedTransactions = transactions.toMutableList() // Створюємо змінний список з поточних транзакцій
-                updatedTransactions.add(transaction) // Додаємо нову транзакцію
-                viewModel.updateTransactions(updatedTransactions) // Оновлюємо транзакції у ViewModel
+                val updatedTransactions = transactions.toMutableList()
+                updatedTransactions.add(transaction)
+                viewModel.updateTransactions(updatedTransactions)
                 showAddTransactionDialog = false
             }
         )
@@ -485,6 +461,10 @@ fun ExpenseScreen(
             )
         }
     }
+}
+
+fun Double.formatAmount(digits: Int): String {
+    return "%.${digits}f".format(this)
 }
 @Composable
 fun CategoryRow(
@@ -542,12 +522,6 @@ fun CategoryRow(
         }
     }
 }
-
-fun Double.formatAmount(digits: Int): String {
-    return "%.${digits}f".format(this)
-}
-
-
 @Composable
 fun EditCategoryDialog(
     oldCategoryName: String,
