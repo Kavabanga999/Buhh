@@ -4,8 +4,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -58,6 +60,8 @@ import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -72,6 +76,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        Log.d("MainActivity", "onResume called")
         viewModel.loadExpensesFromSharedPreferences(this)
         viewModel.loadIncomesFromSharedPreferences(this)
     }
@@ -79,6 +84,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.SplashTheme)
         super.onCreate(savedInstanceState)
+
+        Log.d("MainActivity", "onCreate called")
+
+        // Ініціалізація категорій перед відображенням головного екрану
+        viewModel.initializeCategories(this)
 
         setContent {
             HomeAccountingAppTheme {
@@ -89,37 +99,50 @@ class MainActivity : ComponentActivity() {
                         showSplash = false
                     }
                 } else {
-                    MainScreen(
-                        onNavigateToIncomes = {
-                            val intent = Intent(this@MainActivity, IncomeActivity::class.java)
-                            startActivity(intent)
-                        },
-                        onNavigateToExpenses = {
-                            val intent = Intent(this@MainActivity, ExpenseActivity::class.java)
-                            startActivity(intent)
-                        },
-                        onNavigateToIssuedOnLoan = {
-                            val intent = Intent(this@MainActivity, IssuedOnLoanActivity::class.java)
-                            startActivity(intent)
-                        },
-                        onNavigateToBorrowed = {
-                            val intent = Intent(this@MainActivity, BorrowedActivity::class.java)
-                            startActivity(intent)
-                        },
-                        onNavigateToAllTransactionIncome = {
-                            val intent = Intent(this@MainActivity, AllTransactionIncomeActivity::class.java)
-                            startActivity(intent)
-                        },
-                        onNavigateToAllTransactionExpense = {
-                            val intent = Intent(this@MainActivity, AllTransactionExpenseActivity::class.java)
-                            startActivity(intent)
-                        },
-                        onNavigateToBudgetPlanning = {
-                            val intent = Intent(this@MainActivity, BudgetPlanningActivity::class.java)
-                            startActivity(intent)
-                        },
-                        viewModel = viewModel
-                    )
+                    // Спостерігаємо за LiveData для категорій
+                    val expenses by viewModel.expenses.observeAsState(initial = emptyMap())
+                    val incomes by viewModel.incomes.observeAsState(initial = emptyMap())
+
+                    // Перевірка завантаження категорій
+                    Log.d("MainActivity", "Expenses: $expenses")
+                    Log.d("MainActivity", "Incomes: $incomes")
+
+                    // Відображаємо MainScreen лише після завантаження категорій
+                    if (expenses.isNotEmpty() && incomes.isNotEmpty()) {
+                        MainScreen(
+                            onNavigateToIncomes = {
+                                val intent = Intent(this@MainActivity, IncomeActivity::class.java)
+                                startActivity(intent)
+                            },
+                            onNavigateToExpenses = {
+                                val intent = Intent(this@MainActivity, ExpenseActivity::class.java)
+                                startActivity(intent)
+                            },
+                            onNavigateToIssuedOnLoan = {
+                                val intent = Intent(this@MainActivity, IssuedOnLoanActivity::class.java)
+                                startActivity(intent)
+                            },
+                            onNavigateToBorrowed = {
+                                val intent = Intent(this@MainActivity, BorrowedActivity::class.java)
+                                startActivity(intent)
+                            },
+                            onNavigateToAllTransactionIncome = {
+                                val intent = Intent(this@MainActivity, AllTransactionIncomeActivity::class.java)
+                                startActivity(intent)
+                            },
+                            onNavigateToAllTransactionExpense = {
+                                val intent = Intent(this@MainActivity, AllTransactionExpenseActivity::class.java)
+                                startActivity(intent)
+                            },
+                            onNavigateToBudgetPlanning = {
+                                val intent = Intent(this@MainActivity, BudgetPlanningActivity::class.java)
+                                startActivity(intent)
+                            },
+                            viewModel = viewModel
+                        )
+                    } else {
+                        Log.d("MainActivity", "Waiting for categories to load")
+                    }
                 }
             }
         }
@@ -128,6 +151,7 @@ class MainActivity : ComponentActivity() {
             override fun onReceive(context: Context, intent: Intent) {
                 if (intent.action == "com.example.homeaccountingapp.UPDATE_EXPENSES" ||
                     intent.action == "com.example.homeaccountingapp.UPDATE_INCOME") {
+                    Log.d("MainActivity", "Broadcast received: ${intent.action}")
                     viewModel.refreshExpenses(context)
                     viewModel.refreshIncomes(context)
                 }
@@ -142,6 +166,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d("MainActivity", "onDestroy called")
         LocalBroadcastManager.getInstance(this).unregisterReceiver(updateReceiver)
     }
 }
@@ -171,19 +196,48 @@ fun SplashScreen(onTimeout: () -> Unit) {
 }
 
 class MainViewModel : ViewModel() {
+
     private val _expenses = MutableLiveData<Map<String, Double>>()
     val expenses: LiveData<Map<String, Double>> = _expenses
     private val _incomes = MutableLiveData<Map<String, Double>>()
     val incomes: LiveData<Map<String, Double>> = _incomes
 
+    private val standardExpenseCategories = listOf("Продукти", "Транспорт", "Розваги", "Здоров'я")
+    private val standardIncomeCategories = listOf("Зарплата", "Бонуси", "Подарунки")
+
+    fun initializeCategories(context: Context) {
+        val expenseSharedPreferences = context.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
+        val incomeSharedPreferences = context.getSharedPreferences("IncomePrefs", Context.MODE_PRIVATE)
+
+        if (expenseSharedPreferences.getString("categories", null) == null) {
+            Log.d("MainViewModel", "Initializing standard expense categories")
+            saveCategories(expenseSharedPreferences, standardExpenseCategories)
+        }
+        if (incomeSharedPreferences.getString("categories", null) == null) {
+            Log.d("MainViewModel", "Initializing standard income categories")
+            saveCategories(incomeSharedPreferences, standardIncomeCategories)
+        }
+
+        loadExpensesFromSharedPreferences(context)
+        loadIncomesFromSharedPreferences(context)
+    }
+
     fun loadExpensesFromSharedPreferences(context: Context) {
-        val sharedPreferences = context.getSharedPreferences("budget_prefs", Context.MODE_PRIVATE)
+        val sharedPreferences = context.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
+        val gson = Gson()
+        val categoriesJson = sharedPreferences.getString("categories", null)
+        val categories: List<String> = if (categoriesJson != null) {
+            gson.fromJson(categoriesJson, object : TypeToken<List<String>>() {}.type)
+        } else {
+            emptyList()
+        }
         val expensesJson = sharedPreferences.getString("expenses", null)
         val expenseMap: Map<String, Double> = if (expensesJson != null) {
-            Gson().fromJson(expensesJson, object : TypeToken<Map<String, Double>>() {}.type)
+            gson.fromJson(expensesJson, object : TypeToken<Map<String, Double>>() {}.type)
         } else {
-            emptyMap()
+            categories.associateWith { 0.0 }
         }
+        Log.d("MainViewModel", "Loaded expenses: $expenseMap")
         _expenses.value = expenseMap
     }
 
@@ -193,17 +247,26 @@ class MainViewModel : ViewModel() {
         val expensesJson = Gson().toJson(expenses)
         editor.putString("expenses", expensesJson)
         editor.apply()
+        Log.d("MainViewModel", "Saved expenses: $expenses")
         _expenses.value = expenses // Негайне оновлення LiveData
     }
 
     fun loadIncomesFromSharedPreferences(context: Context) {
-        val sharedPreferences = context.getSharedPreferences("budget_prefs", Context.MODE_PRIVATE)
+        val sharedPreferences = context.getSharedPreferences("IncomePrefs", Context.MODE_PRIVATE)
+        val gson = Gson()
+        val categoriesJson = sharedPreferences.getString("categories", null)
+        val categories: List<String> = if (categoriesJson != null) {
+            gson.fromJson(categoriesJson, object : TypeToken<List<String>>() {}.type)
+        } else {
+            emptyList()
+        }
         val incomesJson = sharedPreferences.getString("incomes", null)
         val incomeMap: Map<String, Double> = if (incomesJson != null) {
-            Gson().fromJson(incomesJson, object : TypeToken<Map<String, Double>>() {}.type)
+            gson.fromJson(incomesJson, object : TypeToken<Map<String, Double>>() {}.type)
         } else {
-            emptyMap()
+            categories.associateWith { 0.0 }
         }
+        Log.d("MainViewModel", "Loaded incomes: $incomeMap")
         _incomes.value = incomeMap
     }
 
@@ -213,7 +276,13 @@ class MainViewModel : ViewModel() {
         val incomesJson = Gson().toJson(incomes)
         editor.putString("incomes", incomesJson)
         editor.apply()
+        Log.d("MainViewModel", "Saved incomes: $incomes")
         _incomes.value = incomes // Негайне оновлення LiveData
+    }
+
+    private fun saveCategories(sharedPreferences: SharedPreferences, categories: List<String>) {
+        sharedPreferences.edit().putString("categories", Gson().toJson(categories)).apply()
+        Log.d("MainViewModel", "Saved categories: $categories")
     }
 
     // Відредагуємо функцію saveExpenseTransaction
@@ -232,6 +301,7 @@ class MainViewModel : ViewModel() {
         sharedPreferences.edit().putString("transactions", updatedJson).apply()
 
         val updatedExpenses = calculateExpenses(existingTransactions)
+        Log.d("MainViewModel", "Updated expenses: $updatedExpenses")
         _expenses.value = updatedExpenses
         saveExpensesToSharedPreferences(context, updatedExpenses)
 
@@ -254,12 +324,14 @@ class MainViewModel : ViewModel() {
         sharedPreferences.edit().putString("IncomeTransactions", updatedJson).apply()
 
         val updatedIncomes = calculateIncomes(existingTransactions)
+        Log.d("MainViewModel", "Updated incomes: $updatedIncomes")
         _incomes.value = updatedIncomes
         saveIncomesToSharedPreferences(context, updatedIncomes)
 
         val updateIntent = Intent("com.example.homeaccountingapp.UPDATE_INCOME")
         LocalBroadcastManager.getInstance(context).sendBroadcast(updateIntent)
     }
+
     // Допоміжний метод для перерахунку витрат за категоріями
     private fun calculateExpenses(transactions: List<Transaction>): Map<String, Double> {
         return transactions.groupBy { it.category }.mapValues { (_, transactions) ->
@@ -283,6 +355,7 @@ class MainViewModel : ViewModel() {
 
         // Перерахунок витрат
         val updatedExpenses = calculateExpenses(transactions)
+        Log.d("MainViewModel", "Refreshed expenses: $updatedExpenses")
         _expenses.value = updatedExpenses
     }
 
@@ -295,6 +368,7 @@ class MainViewModel : ViewModel() {
 
         // Перерахунок доходів
         val updatedIncomes = calculateIncomes(transactions)
+        Log.d("MainViewModel", "Refreshed incomes: $updatedIncomes")
         _incomes.value = updatedIncomes
     }
 }
@@ -323,8 +397,8 @@ fun MainScreen(
         showIncomes = false
     }
 
-    val expenses = viewModel.expenses.observeAsState(initial = emptyMap()).value
-    val incomes = viewModel.incomes.observeAsState(initial = emptyMap()).value
+    val expenses by viewModel.expenses.observeAsState(initial = emptyMap())
+    val incomes by viewModel.incomes.observeAsState(initial = emptyMap())
 
     val totalExpenses = expenses.values.sum()
     val totalIncomes = incomes.values.sum()
@@ -801,12 +875,22 @@ fun ExpandableButtonWithAmount(
                 fontWeight = FontWeight.Bold, // Жирний текст
                 fontSize = 18.sp // Розмір шрифту для тексту
             )
-            Text(
-                text = "${"%.2f".format(amount)} грн", // Форматування суми
-                color = Color.White,
-                fontWeight = FontWeight.Bold, // Жирний текст
-                fontSize = 18.sp // Розмір шрифту для суми
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${"%.2f".format(amount)} грн", // Форматування суми
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold, // Жирний текст
+                    fontSize = 18.sp // Розмір шрифту для суми
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+            }
         }
     }
 }
@@ -989,40 +1073,6 @@ fun DrawerContent(
             )
             Spacer(modifier = Modifier.height(8.dp))
             CategoryItem(
-                text = "Видано в борг",
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_loan_issued),
-                        contentDescription = "Іконка виданих боргів",
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
-                    )
-                },
-                onClick = onNavigateToIssuedOnLoan,
-                gradientColors = listOf(
-                    Color(0xFF000000).copy(alpha = 0.7f),
-                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CategoryItem(
-                text = "Отримано в борг",
-                icon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_loan_borrowed),
-                        contentDescription = "Іконка отриманих боргів",
-                        tint = Color.White,
-                        modifier = Modifier.size(iconSize)
-                    )
-                },
-                onClick = onNavigateToBorrowed,
-                gradientColors = listOf(
-                    Color(0xFF000000).copy(alpha = 0.7f),
-                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            CategoryItem(
                 text = "Всі транзакції доходів",
                 icon = {
                     Icon(
@@ -1050,6 +1100,40 @@ fun DrawerContent(
                     )
                 },
                 onClick = onNavigateToAllTransactionExpense,
+                gradientColors = listOf(
+                    Color(0xFF000000).copy(alpha = 0.7f),
+                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            CategoryItem(
+                text = "Видано в борг",
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_loan_issued),
+                        contentDescription = "Іконка виданих боргів",
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                onClick = onNavigateToIssuedOnLoan,
+                gradientColors = listOf(
+                    Color(0xFF000000).copy(alpha = 0.7f),
+                    Color(0xFF2E2E2E).copy(alpha = 0.7f)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            CategoryItem(
+                text = "Отримано в борг",
+                icon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_loan_borrowed),
+                        contentDescription = "Іконка отриманих боргів",
+                        tint = Color.White,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                onClick = onNavigateToBorrowed,
                 gradientColors = listOf(
                     Color(0xFF000000).copy(alpha = 0.7f),
                     Color(0xFF2E2E2E).copy(alpha = 0.7f)
