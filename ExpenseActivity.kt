@@ -78,11 +78,18 @@ class ExpenseActivity : ComponentActivity() {
         ExpenseViewModelFactory(application)
     }
     private lateinit var updateReceiver: BroadcastReceiver
+    private val standardCategories = listOf("Продукти", "Транспорт", "Розваги", "Здоров'я")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate() called")
         sharedPreferences = getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
+
+        // Ініціалізація категорій при першому запуску
+        if (sharedPreferences.getString("categories", null) == null) {
+            saveCategories(standardCategories)
+        }
+
         loadExpensesFromSharedPreferences()
 
         transactionResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -111,6 +118,9 @@ class ExpenseActivity : ComponentActivity() {
                 )
             }
         }
+
+        // Встановлення функції після створення ViewModel
+        viewModel.setSendUpdateBroadcast { sendUpdateBroadcast() }
 
         // Ініціалізація BroadcastReceiver для оновлення даних
         updateReceiver = object : BroadcastReceiver() {
@@ -142,12 +152,20 @@ class ExpenseActivity : ComponentActivity() {
         Log.d("ExpenseActivity", "Updated expenses: $expenseMap")
     }
 
+    private fun saveCategories(categories: List<String>) {
+        Log.d(TAG, "Saving categories: $categories")  // Логування перед збереженням
+        sharedPreferences.edit().putString("categories", gson.toJson(categories)).apply()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         LocalBroadcastManager.getInstance(this).unregisterReceiver(updateReceiver)
     }
-}
 
+    companion object {
+        private const val TAG = "ExpenseActivity"
+    }
+}
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferences = application.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
     private val gson = Gson()
@@ -158,8 +176,16 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     var totalExpense by mutableStateOf(0.0)
     private val mainViewModel: MainViewModel = MainViewModel() // Додайте це для доступу до MainViewModel
 
+    // Створення властивості для зберігання функції
+    private var sendUpdateBroadcast: (() -> Unit)? = null
+
     init {
         loadData()
+    }
+
+    // Метод для встановлення функції
+    fun setSendUpdateBroadcast(sendUpdateBroadcast: () -> Unit) {
+        this.sendUpdateBroadcast = sendUpdateBroadcast
     }
 
     // Функція для завантаження даних
@@ -185,6 +211,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         categories = newCategories
         saveCategories(categories)
         updateExpenses()  // Оновлення витрат після зміни категорій
+        sendUpdateBroadcast?.invoke() // Виклик функції для відправки broadcast
     }
 
     fun updateTransactions(newTransactions: List<Transaction>) {
@@ -911,6 +938,7 @@ fun AddTransactionDialog(
     }
 }
 data class Transaction(
+    val id: String = UUID.randomUUID().toString(), // Додаємо унікальний ідентифікатор
     val category: String,
     val amount: Double,
     val date: String,
