@@ -53,7 +53,6 @@ import java.util.*
 import com.example.homeaccountingapp.DateUtils
 
 private const val TAG = "IncomeActivity"
-
 class IncomeViewModelFactory(
     private val application: Application
 ) : ViewModelProvider.Factory {
@@ -64,7 +63,6 @@ class IncomeViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
-
 class IncomeActivity : ComponentActivity() {
     private lateinit var incomesharedPreferences: SharedPreferences
     private lateinit var IncomeTransactionResultLauncher: ActivityResultLauncher<Intent>
@@ -73,17 +71,10 @@ class IncomeActivity : ComponentActivity() {
         IncomeViewModelFactory(application)
     }
     private lateinit var updateReceiver: BroadcastReceiver
-    private val standardIncomeCategories = listOf("Зарплата", "Бонуси", "Подарунки")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         incomesharedPreferences = getSharedPreferences("IncomePrefs", Context.MODE_PRIVATE)
-
-        // Ініціалізація категорій при першому запуску
-        if (incomesharedPreferences.getString("categories", null) == null) {
-            saveCategories(standardIncomeCategories)
-        }
-
         loadIncomesFromSharedPreferences()
 
         IncomeTransactionResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -97,9 +88,10 @@ class IncomeActivity : ComponentActivity() {
             HomeAccountingAppTheme {
                 IncomeScreen(
                     viewModel = viewModel,
-                    onOpenIncomeTransactionScreen = { categoryName, _ ->
+                    onOpenIncomeTransactionScreen = { categoryName, IncomeTransactionsJson ->
                         val intent = Intent(this, IncomeTransactionActivity::class.java).apply {
                             putExtra("categoryName", categoryName)
+                            putExtra("IncomeTransactionsJson", IncomeTransactionsJson)
                         }
                         IncomeTransactionResultLauncher.launch(intent)
                     },
@@ -110,9 +102,6 @@ class IncomeActivity : ComponentActivity() {
                 )
             }
         }
-
-        // Встановлення функції після створення ViewModel
-        viewModel.setSendUpdateBroadcast { sendUpdateBroadcast() }
 
         updateReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -140,17 +129,9 @@ class IncomeActivity : ComponentActivity() {
         viewModel.updateIncomes(incomeMap)
     }
 
-    private fun saveCategories(categories: List<String>) {
-        incomesharedPreferences.edit().putString("categories", gson.toJson(categories)).apply()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         LocalBroadcastManager.getInstance(this).unregisterReceiver(updateReceiver)
-    }
-
-    companion object {
-        private const val TAG = "IncomeActivity"
     }
 }
 class IncomeViewModel(application: Application) : AndroidViewModel(application) {
@@ -161,34 +142,23 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
     var categoryIncomes by mutableStateOf<Map<String, Double>>(emptyMap())
     var totalIncome by mutableStateOf(0.0)
     private val mainViewModel: MainViewModel = MainViewModel() // Додайте це для доступу до MainViewModel
-
-    // Створення властивості для зберігання функції
-    private var sendUpdateBroadcast: (() -> Unit)? = null
-
     init {
         loadDataIncome()
     }
-
-    // Метод для встановлення функції
-    fun setSendUpdateBroadcast(sendUpdateBroadcast: () -> Unit) {
-        this.sendUpdateBroadcast = sendUpdateBroadcast
-    }
-
     // Функція для завантаження даних
     fun loadDataIncome() {
         categories = IncomeLoadCategories()
         IncomeTransactions = loadIncomeTransactions()
-        updateIncomes()  // Оновлення доходів при завантаженні даних
+        updateIncomes()  // Оновлення витрат при завантаженні даних
     }
-
-    // Публічна функція для оновлення доходів
+    // Публічна функція для оновлення витрат
     fun updateIncomes(Incomes: Map<String, Double> = emptyMap()) {
         categoryIncomes = Incomes.takeIf { it.isNotEmpty() }
             ?: categories.associateWith { category ->
                 IncomeTransactions.filter { it.category == category }.sumOf { it.amount }
             }
         totalIncome = IncomeTransactions.sumOf { it.amount }
-        // Оновлення доходів у MainViewModel
+        // Оновлення витрат у MainViewModel
         mainViewModel.saveIncomesToSharedPreferences(getApplication(), categoryIncomes)
     }
 
@@ -196,8 +166,9 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
         categories = newCategories
         IncomeSaveCategories(categories)
         updateIncomes()  // Оновлення витрат після зміни категорій
-        sendUpdateBroadcast?.invoke() // Виклик функції для відправки broadcast
     }
+
+
 
     fun updateIncomeTransactions(newTransactions: List<IncomeTransaction>) {
         IncomeTransactions = newTransactions.map { transaction ->
@@ -210,13 +181,12 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
         val updateIntent = Intent("com.example.homeaccountingapp.UPDATE_INCOME")
         LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(updateIntent)
     }
-
     fun incomeDeleteCategory(category: String) {
         categories = categories.filter { it != category }
         IncomeTransactions = IncomeTransactions.filter { it.category != category }
         IncomeSaveCategories(categories) // Збереження категорій
         saveIncomeTransactions(IncomeTransactions) // Збереження транзакцій
-        updateIncomes()  // Оновлення доходів після видалення категорії
+        updateIncomes()  // Оновлення витрат після видалення категорії
     }
 
     fun IncomeEditCategory(oldCategory: String, newCategory: String) {
@@ -226,7 +196,7 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
         }
         IncomeSaveCategories(categories)
         saveIncomeTransactions(IncomeTransactions)
-        updateIncomes()  // Оновлення доходів після зміни категорії
+        updateIncomes()  // Оновлення витрат після зміни категорії
     }
 
     private fun IncomeSaveCategories(categories: List<String>) {
@@ -258,16 +228,9 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
             emptyList()
         }
     }
-
-    fun loadTransactionsForCategory(categoryName: String): MutableList<IncomeTransaction> {
-        return loadIncomeTransactions().filter { it.category == categoryName }.toMutableList()
-    }
-
-    fun saveTransactionsForCategory(updatedTransactions: List<IncomeTransaction>, categoryName: String) {
-        val existingTransactions = loadIncomeTransactions().filter { it.category != categoryName } + updatedTransactions
-        saveIncomeTransactions(existingTransactions)
-    }
 }
+
+
 @Composable
 fun IncomeScreen(
     viewModel: IncomeViewModel, // Приймаємо ViewModel
@@ -915,7 +878,6 @@ fun IncomeAddIncomeTransactionDialog(
     }
 }
 data class IncomeTransaction(
-    val id: String = UUID.randomUUID().toString(),
     val category: String,
     val amount: Double,
     val date: String,
