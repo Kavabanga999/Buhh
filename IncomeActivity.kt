@@ -267,10 +267,6 @@ class IncomeViewModel(application: Application) : AndroidViewModel(application) 
         val existingTransactions = loadIncomeTransactions().filter { it.category != categoryName } + updatedTransactions
         saveIncomeTransactions(existingTransactions)
     }
-
-    companion object {
-        private const val TAG = "IncomeViewModel"
-    }
 }
 @Composable
 fun IncomeScreen(
