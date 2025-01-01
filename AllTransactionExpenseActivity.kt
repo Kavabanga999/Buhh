@@ -29,10 +29,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.example.homeaccountingapp.ui.theme.HomeAccountingAppTheme
-import java.text.SimpleDateFormat
-import java.util.*
 
 class AllTransactionExpenseActivity : ComponentActivity() {
     private val viewModel: ExpenseViewModel by viewModels { ExpenseViewModelFactory(application) }
@@ -65,8 +64,8 @@ class AllTransactionExpenseActivity : ComponentActivity() {
 }
 
 @Composable
-fun AllTransactionExpenseScreen(viewModel: ExpenseViewModel) {
-    val expenseTransactions by viewModel.transactions.observeAsState(emptyList())
+fun AllTransactionExpenseScreen(viewModel: ExpenseViewModel = viewModel()) {
+    val expenseTransactions by viewModel.transactions.observeAsState(initial = emptyList())
     val todayDate = getCurrentDateAllExpense()
     val todayTransactions = expenseTransactions.filter { it.date == todayDate }
     val pastTransactions = expenseTransactions.filter { it.date != todayDate }
@@ -114,7 +113,7 @@ fun AllTransactionExpenseScreen(viewModel: ExpenseViewModel) {
                     }
                     item {
                         Text(
-                            text = "Всього сьогоднішніх витрат: ${totalTodayExpense.formatAmount(2)} грн",
+                            text = "Всього сьогоднішніх витрат: $totalTodayExpense грн",
                             style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Normal, color = Color.White),
                             modifier = Modifier.padding(16.dp)
                         )
@@ -167,7 +166,7 @@ fun AllExpenseTransactionItem(
     ) {
         Column {
             Text(
-                text = "Сума: ${if (transaction.amount < 0) "" else "-"}${transaction.amount.formatAmount(2)} грн", // Перевірка наявності мінуса
+                text = "Сума: ${if (transaction.amount < 0) "" else "-"}${transaction.amount} грн", // Перевірка наявності мінуса
                 style = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
                 modifier = Modifier.padding(bottom = 4.dp)
             )
@@ -188,6 +187,6 @@ fun AllExpenseTransactionItem(
 
 // Функція для отримання поточної дати у форматі "yyyy-MM-dd"
 fun getCurrentDateAllExpense(): String {
-    val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    return formatter.format(Date())
+    val formatter = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+    return formatter.format(java.util.Date())
 }
