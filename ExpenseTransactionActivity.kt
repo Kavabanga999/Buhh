@@ -40,11 +40,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.homeaccountingapp.DateUtils
-
 class ExpenseTransactionActivity : ComponentActivity() {
     private val viewModel: ExpenseViewModel by viewModels { ExpenseViewModelFactory(application) }
-    private lateinit var transactions: MutableList<Transaction>
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val categoryName = intent.getStringExtra("categoryName") ?: "Категорія"
@@ -52,8 +49,8 @@ class ExpenseTransactionActivity : ComponentActivity() {
         val sharedPreferences = getSharedPreferences("ExpensePrefs", MODE_PRIVATE)
         val transactionsJson = sharedPreferences.getString("transactions", "[]") ?: "[]"
         val type = object : TypeToken<List<Transaction>>() {}.type
-        transactions = gson.fromJson<List<Transaction>>(transactionsJson, type).toMutableList()
-        val filteredTransactions = transactions.filter { it.category == categoryName }.toMutableList()
+        val transactions: List<Transaction> = gson.fromJson(transactionsJson, type)
+        val filteredTransactions = transactions.filter { it.category == categoryName }
         setContent {
             HomeAccountingAppTheme {
                 ExpenseTransactionScreen(
@@ -79,11 +76,9 @@ class ExpenseTransactionActivity : ComponentActivity() {
             emptyList()
         }
 
-        // Оновлюємо список транзакцій для конкретної категорії
         val updatedList = existingTransactions.filter { it.category != categoryName } + updatedTransactions
         val newTransactionsJson = gson.toJson(updatedList)
 
-        // Зберігаємо транзакції в SharedPreferences
         sharedPreferences.edit().putString("transactions", newTransactionsJson).apply()
 
         // Надсилаємо Broadcast для оновлення даних
@@ -91,10 +86,6 @@ class ExpenseTransactionActivity : ComponentActivity() {
         LocalBroadcastManager.getInstance(this).sendBroadcast(updateIntent)
     }
 
-    private fun deleteTransaction(transaction: Transaction, onUpdateTransactions: (List<Transaction>) -> Unit) {
-        transactions = transactions.filter { it.id != transaction.id }.toMutableList() // Використовуємо id для порівняння
-        onUpdateTransactions(transactions)
-    }
 }
 @Composable
 fun ExpenseTransactionScreen(
@@ -163,7 +154,7 @@ fun ExpenseTransactionScreen(
                 if (todayTransactions.isNotEmpty()) {
                     item {
                         Text(
-                            text = "Транзакції за сьогодні",
+                            text = "Сьогоднішні транзакції",
                             style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White),
                             modifier = Modifier.padding(16.dp)
                         )
@@ -230,7 +221,7 @@ fun ExpenseTransactionScreen(
                     showEditDialog = true
                 },
                 onDelete = {
-                    transactions = transactions.filter { it.id != selectedTransaction!!.id }.toMutableList()
+                    transactions = transactions.filter { it != selectedTransaction }.toMutableList()
                     onUpdateTransactions(transactions)
                     showMenuDialog = false
                 }
@@ -242,7 +233,7 @@ fun ExpenseTransactionScreen(
                 onDismiss = { showEditDialog = false },
                 onSave = { updatedTransaction ->
                     transactions = transactions.map {
-                        if (it.id == selectedTransaction!!.id) updatedTransaction else it
+                        if (it == selectedTransaction) updatedTransaction else it
                     }.toMutableList()
                     onUpdateTransactions(transactions)
                     showEditDialog = false
@@ -262,7 +253,7 @@ fun ExpenseTransactionScreen(
             AddTransactionDialog(
                 onDismiss = { showAddDialog = false },
                 onSave = { newTransaction ->
-                    transactions = (transactions + newTransaction).toMutableList()
+                    transactions = (transactions + newTransaction) as MutableList<Transaction>
                     onUpdateTransactions(transactions)
                     showAddDialog = false
                 },
@@ -351,11 +342,10 @@ fun AddTransactionDialog(
                 onClick = {
                     val amountValue = amount.toDoubleOrNull()
                     if (amountValue != null && date.isNotBlank()) {
-                        // Переконайтеся, що сума завжди негативна
                         onSave(
                             Transaction(
                                 category = categoryName,
-                                amount = -amountValue, // Ensure the amount is negative
+                                amount = amountValue,
                                 date = date,
                                 comments = comment
                             )
@@ -527,9 +517,10 @@ fun EditTransactionDialog(
     val datePickerState = remember { mutableStateOf(false) }
     if (datePickerState.value) {
         // Показуємо діалог для вибору дати
-        DatePickerDialogComponent(
-            onDateSelected = { selectedDate ->
-                updatedDate = DateUtils.formatDate(selectedDate, "dd/MM/yyyy", "yyyy-MM-dd") // Оновлення дати після вибору
+        DatePickerDialog(
+            onDismiss = { datePickerState.value = false },
+            onDateSelected = { day, month, year ->
+                updatedDate = "$day/${month + 1}/$year"
                 datePickerState.value = false
             }
         )
@@ -582,7 +573,6 @@ fun EditTransactionDialog(
                     onValueChange = { updatedComment = it },
                     label = { Text("Коментар", style = TextStyle(color = Color.White)) },
                     colors = TextFieldDefaults.textFieldColors(
-                        cursorColor = Color.White,
                         focusedIndicatorColor = Color.White,
                         unfocusedIndicatorColor = Color.White,
                         focusedLabelColor = Color.White,
@@ -597,8 +587,7 @@ fun EditTransactionDialog(
                 onClick = {
                     val amountValue = updatedAmount.toDoubleOrNull()
                     if (amountValue != null) {
-                        // Переконайтеся, що сума завжди негативна
-                        onSave(transaction.copy(amount = -amountValue, date = updatedDate, comments = updatedComment)) // Ensure the amount is negative
+                        onSave(transaction.copy(amount = amountValue, date = updatedDate, comments = updatedComment))
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -610,7 +599,8 @@ fun EditTransactionDialog(
             ) {
                 Text("Зберегти", style = MaterialTheme.typography.bodyLarge)
             }
-        },
+        }
+        ,
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Скасувати", color = Color.White)
@@ -618,4 +608,32 @@ fun EditTransactionDialog(
         },
         containerColor = Color.DarkGray
     )
+}
+@Composable
+fun DatePickerDialog(
+    onDismiss: () -> Unit,
+    onDateSelected: (day: Int, month: Int, year: Int) -> Unit
+) {
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH)
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, selectedYear, selectedMonth, selectedDay ->
+            onDateSelected(selectedDay, selectedMonth, selectedYear)
+        },
+        year,
+        month,
+        day
+    )
+    LaunchedEffect(Unit) {
+        datePickerDialog.show()
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            onDismiss()
+        }
+    }
 }
