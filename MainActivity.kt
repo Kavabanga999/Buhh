@@ -315,7 +315,12 @@ class MainViewModel : ViewModel() {
 
         // Перерахунок витрат
         val updatedExpenses = calculateExpenses(transactions)
-        _expenses.value = updatedExpenses
+
+        // Додавання порожніх категорій
+        val expenseCategories = _expenseCategories.value ?: emptyList()
+        val completeExpenses = expenseCategories.associateWith { updatedExpenses[it] ?: 0.0 }
+
+        _expenses.value = completeExpenses
     }
 
     fun refreshIncomes(context: Context) {
@@ -327,7 +332,12 @@ class MainViewModel : ViewModel() {
 
         // Перерахунок доходів
         val updatedIncomes = calculateIncomes(transactions)
-        _incomes.value = updatedIncomes
+
+        // Додавання порожніх категорій
+        val incomeCategories = _incomeCategories.value ?: emptyList()
+        val completeIncomes = incomeCategories.associateWith { updatedIncomes[it] ?: 0.0 }
+
+        _incomes.value = completeIncomes
     }
 
     fun refreshCategories(context: Context) {
@@ -561,11 +571,11 @@ fun MainScreen(
 
                     if (showAddExpenseTransactionDialog) {
                         AddTransactionDialog(
-                            categories = expenseCategories, // Використовуємо категорії витрат з LiveData
+                            categories = expenseCategories,
                             onDismiss = { showAddExpenseTransactionDialog = false },
                             onSave = { transaction ->
-                                viewModel.saveExpenseTransaction(context, transaction) // Передаємо поточний Context
-                                viewModel.refreshExpenses(context) // Форсоване оновлення витрат
+                                viewModel.saveExpenseTransaction(context, transaction)
+                                viewModel.refreshExpenses(context)
                                 showAddExpenseTransactionDialog = false
                             }
                         )
@@ -573,11 +583,11 @@ fun MainScreen(
 
                     if (showAddIncomeTransactionDialog) {
                         IncomeAddIncomeTransactionDialog(
-                            categories = incomeCategories, // Використовуємо категорії доходів з LiveData
+                            categories = incomeCategories,
                             onDismiss = { showAddIncomeTransactionDialog = false },
                             onSave = { incomeTransaction ->
-                                viewModel.saveIncomeTransaction(context, incomeTransaction) // Передаємо поточний Context
-                                viewModel.refreshIncomes(context) // Форсоване оновлення доходів
+                                viewModel.saveIncomeTransaction(context, incomeTransaction)
+                                viewModel.refreshIncomes(context)
                                 showAddIncomeTransactionDialog = false
                             }
                         )
@@ -871,7 +881,7 @@ fun IncomeList(incomes: Map<String, Double>) {
                         brush = Brush.linearGradient(
                             colors = listOf(Color(0x99000000), Color(0x66000000)),
                             start = Offset(0f, 0f),
-                            end = Offset(1f, 0f) // Горизонтальний градієнт
+                            end = Offset(1f, 0f)
                         ),
                         shape = RoundedCornerShape(8.dp)
                     )
@@ -888,7 +898,7 @@ fun IncomeList(incomes: Map<String, Double>) {
                         style = MaterialTheme.typography.bodyLarge.copy(color = Color.White)
                     )
                     Text(
-                        text = "${"%.2f".format(amount)} грн", // Форматування суми
+                        text = "${"%.2f".format(amount)} грн",
                         style = MaterialTheme.typography.bodyLarge.copy(color = Color.White)
                     )
                 }
@@ -896,7 +906,6 @@ fun IncomeList(incomes: Map<String, Double>) {
         }
     }
 }
-
 @Composable
 fun ExpensesList(expenses: Map<String, Double>) {
     LazyColumn {
@@ -909,7 +918,7 @@ fun ExpensesList(expenses: Map<String, Double>) {
                         brush = Brush.linearGradient(
                             colors = listOf(Color(0x99000000), Color(0x66000000)),
                             start = Offset(0f, 0f),
-                            end = Offset(1f, 0f) // Горизонтальний градієнт
+                            end = Offset(1f, 0f)
                         ),
                         shape = RoundedCornerShape(8.dp)
                     )
@@ -926,7 +935,7 @@ fun ExpensesList(expenses: Map<String, Double>) {
                         style = MaterialTheme.typography.bodyLarge.copy(color = Color.White)
                     )
                     Text(
-                        text = "${"%.2f".format(amount)} грн", // Форматування суми
+                        text = "${"%.2f".format(amount)} грн",
                         style = MaterialTheme.typography.bodyLarge.copy(color = Color.White)
                     )
                 }
