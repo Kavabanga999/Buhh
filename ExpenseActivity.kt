@@ -83,7 +83,13 @@ class ExpenseActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate() called")
         sharedPreferences = getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
+        // Ініціалізація категорій при першому запуску
+        if (sharedPreferences.getString("categories", null) == null) {
+            saveCategories(listOf("Food", "Transport", "Utilities")) // Ініціалізація категорій при першому запуску
+        }
+
         loadExpensesFromSharedPreferences()
+        loadCategoriesFromSharedPreferences() // Завантаження категорій
 
         transactionResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
@@ -133,7 +139,6 @@ class ExpenseActivity : ComponentActivity() {
     }
 
     private fun loadExpensesFromSharedPreferences() {
-        val sharedPreferences = getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
         val expensesJson = sharedPreferences.getString("expenses", null)
         Log.d("ExpenseActivity", "Loaded expenses JSON: $expensesJson")
         val expenseMap: Map<String, Double> = if (expensesJson != null) {
@@ -143,6 +148,20 @@ class ExpenseActivity : ComponentActivity() {
         }
         viewModel.updateExpenses(expenseMap)  // Оновлення витрат в ViewModel
         Log.d("ExpenseActivity", "Updated expenses: $expenseMap")
+    }
+
+    private fun loadCategoriesFromSharedPreferences() {
+        val categoriesJson = sharedPreferences.getString("categories", null)
+        val categoriesList: List<String> = if (categoriesJson != null) {
+            Gson().fromJson(categoriesJson, object : TypeToken<List<String>>() {}.type)
+        } else {
+            emptyList()
+        }
+        viewModel.updateCategories(categoriesList)  // Оновлення категорій в ViewModel
+    }
+
+    private fun saveCategories(categories: List<String>) {
+        sharedPreferences.edit().putString("categories", gson.toJson(categories)).apply()
     }
 
     override fun onDestroy() {
@@ -188,7 +207,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             }
         totalExpense = currentTransactions.sumOf { it.amount }
         // Оновлення витрат у MainViewModel
-        mainViewModel.saveExpensesToSharedPreferences(getApplication(), categoryExpenses)
+        mainViewModel.saveExpensesToSharedPreferences(getApplication<Application>().applicationContext, categoryExpenses)
     }
 
     fun updateCategories(newCategories: List<String>) {
@@ -208,7 +227,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         updateExpenses()
 
         val updateIntent = Intent("com.example.homeaccountingapp.UPDATE_EXPENSES")
-        LocalBroadcastManager.getInstance(getApplication()).sendBroadcast(updateIntent)
+        LocalBroadcastManager.getInstance(getApplication<Application>().applicationContext).sendBroadcast(updateIntent)
     }
 
     fun deleteCategory(category: String) {
@@ -710,9 +729,8 @@ fun AddTransactionDialog(
     var showDatePicker by remember { mutableStateOf(false) }
     var isDropdownExpanded by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
-
     if (showDatePicker) {
+        val context = LocalContext.current
         val calendar = Calendar.getInstance()
         DatePickerDialog(
             context,
@@ -725,10 +743,11 @@ fun AddTransactionDialog(
             calendar.get(Calendar.DAY_OF_MONTH)
         ).show()
     }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.8f)) // Більш прозорий чорний фон
+            .background(Color.Black.copy(alpha = 0.8f))
             .clickable(enabled = true, onClick = {})
     ) {
         Column(
@@ -736,7 +755,7 @@ fun AddTransactionDialog(
                 .align(Alignment.Center)
                 .padding(16.dp)
                 .background(
-                    color = Color.Black.copy(alpha = 0.7f), // Чорний фон з більшою прозорістю
+                    color = Color.Black.copy(alpha = 0.7f),
                     shape = RoundedCornerShape(8.dp)
                 )
                 .padding(16.dp),
@@ -746,7 +765,7 @@ fun AddTransactionDialog(
                 text = "Додати витрату",
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Bold,
-                    color = Color.Red // Червоний заголовок
+                    color = Color.Red
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -770,11 +789,9 @@ fun AddTransactionDialog(
                     cursorColor = Color.White,
                     focusedLabelColor = Color.White,
                     unfocusedLabelColor = Color.Gray,
-                    containerColor = Color.Black.copy(alpha = 0.9f), // Менш прозорий чорний фон для поля вводу
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    containerColor = Color.Black.copy(alpha = 0.9f)
                 ),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White, fontWeight = FontWeight.Bold), // Білий і жирний текст
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White, fontWeight = FontWeight.Bold),
                 keyboardOptions = KeyboardOptions.Default.copy(
                     keyboardType = KeyboardType.Decimal
                 )
@@ -815,7 +832,7 @@ fun AddTransactionDialog(
                         unfocusedLabelColor = Color.Gray,
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        containerColor = Color.Black.copy(alpha = 0.9f) // Менш прозорий чорний фон для поля вводу
+                        containerColor = Color.Black.copy(alpha = 0.9f)
                     ),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White, fontWeight = FontWeight.Bold)
                 )
@@ -839,20 +856,6 @@ fun AddTransactionDialog(
                             modifier = Modifier.background(Color(0xFF2B2B2B))
                         )
                     }
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = "Додати категорію",
-                                color = Color.Yellow,
-                                fontWeight = FontWeight.Bold
-                            )
-                        },
-                        onClick = {
-                            val intent = Intent(context, ExpenseActivity::class.java)
-                            context.startActivity(intent)
-                        },
-                        modifier = Modifier.background(Color(0xFF444444))
-                    )
                 }
             }
             OutlinedTextField(
@@ -869,9 +872,7 @@ fun AddTransactionDialog(
                     cursorColor = Color.White,
                     focusedLabelColor = Color.White,
                     unfocusedLabelColor = Color.Gray,
-                    containerColor = Color.Black.copy(alpha = 0.9f), // Менш прозорий чорний фон для поля вводу
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    containerColor = Color.Black.copy(alpha = 0.9f)
                 ),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White, fontWeight = FontWeight.Bold)
             )
