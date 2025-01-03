@@ -842,7 +842,8 @@ fun IncomeAddIncomeTransactionDialog(
                             Text(
                                 text = "Додати категорію",
                                 color = Color.Yellow,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp // Збільшення розміру шрифту для кращої читабельності
                             )
                         },
                         onClick = {
