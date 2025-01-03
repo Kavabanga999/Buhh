@@ -238,16 +238,6 @@ class MainViewModel : ViewModel() {
         }
         _expenseCategories.value = categoriesList
     }
-
-    fun saveExpenseCategoriesToSharedPreferences(context: Context, categories: List<String>) {
-        val sharedPreferences = context.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        val categoriesJson = Gson().toJson(categories)
-        editor.putString("categories", categoriesJson)
-        editor.apply()
-        _expenseCategories.value = categories // Негайне оновлення LiveData
-    }
-
     fun loadIncomeCategoriesFromSharedPreferences(context: Context) {
         val sharedPreferences = context.getSharedPreferences("IncomePrefs", Context.MODE_PRIVATE)
         val categoriesJson = sharedPreferences.getString("categories", null)
@@ -258,16 +248,6 @@ class MainViewModel : ViewModel() {
         }
         _incomeCategories.value = categoriesList
     }
-
-    fun saveIncomeCategoriesToSharedPreferences(context: Context, categories: List<String>) {
-        val sharedPreferences = context.getSharedPreferences("IncomePrefs", Context.MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        val categoriesJson = Gson().toJson(categories)
-        editor.putString("categories", categoriesJson)
-        editor.apply()
-        _incomeCategories.value = categories // Негайне оновлення LiveData
-    }
-
     fun saveExpenseTransaction(context: Context, transaction: Transaction) {
         val sharedPreferences = context.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
         val gson = Gson()
