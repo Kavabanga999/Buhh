@@ -74,6 +74,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.loadExpenseCategoriesFromSharedPreferences(this)
+        viewModel.loadIncomeCategoriesFromSharedPreferences(this)
         viewModel.loadExpensesFromSharedPreferences(this)
         viewModel.loadIncomesFromSharedPreferences(this)
     }
@@ -132,6 +134,7 @@ class MainActivity : ComponentActivity() {
                     intent.action == "com.example.homeaccountingapp.UPDATE_INCOME") {
                     viewModel.refreshExpenses(context)
                     viewModel.refreshIncomes(context)
+                    viewModel.refreshCategories(context) // Оновлення категорій
                 }
             }
         }
@@ -175,11 +178,18 @@ fun SplashScreen(onTimeout: () -> Unit) {
 class MainViewModel : ViewModel() {
     private val _expenses = MutableLiveData<Map<String, Double>>()
     val expenses: LiveData<Map<String, Double>> = _expenses
+
     private val _incomes = MutableLiveData<Map<String, Double>>()
     val incomes: LiveData<Map<String, Double>> = _incomes
 
+    private val _expenseCategories = MutableLiveData<List<String>>()
+    val expenseCategories: LiveData<List<String>> = _expenseCategories
+
+    private val _incomeCategories = MutableLiveData<List<String>>()
+    val incomeCategories: LiveData<List<String>> = _incomeCategories
+
     fun loadExpensesFromSharedPreferences(context: Context) {
-        val sharedPreferences = context.getSharedPreferences("budget_prefs", Context.MODE_PRIVATE)
+        val sharedPreferences = context.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
         val expensesJson = sharedPreferences.getString("expenses", null)
         val expenseMap: Map<String, Double> = if (expensesJson != null) {
             Gson().fromJson(expensesJson, object : TypeToken<Map<String, Double>>() {}.type)
@@ -190,7 +200,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun saveExpensesToSharedPreferences(context: Context, expenses: Map<String, Double>) {
-        val sharedPreferences = context.getSharedPreferences("budget_prefs", Context.MODE_PRIVATE)
+        val sharedPreferences = context.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         val expensesJson = Gson().toJson(expenses)
         editor.putString("expenses", expensesJson)
@@ -199,7 +209,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun loadIncomesFromSharedPreferences(context: Context) {
-        val sharedPreferences = context.getSharedPreferences("budget_prefs", Context.MODE_PRIVATE)
+        val sharedPreferences = context.getSharedPreferences("IncomePrefs", Context.MODE_PRIVATE)
         val incomesJson = sharedPreferences.getString("incomes", null)
         val incomeMap: Map<String, Double> = if (incomesJson != null) {
             Gson().fromJson(incomesJson, object : TypeToken<Map<String, Double>>() {}.type)
@@ -210,7 +220,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun saveIncomesToSharedPreferences(context: Context, incomes: Map<String, Double>) {
-        val sharedPreferences = context.getSharedPreferences("budget_prefs", Context.MODE_PRIVATE)
+        val sharedPreferences = context.getSharedPreferences("IncomePrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         val incomesJson = Gson().toJson(incomes)
         editor.putString("incomes", incomesJson)
@@ -218,7 +228,46 @@ class MainViewModel : ViewModel() {
         _incomes.value = incomes // Негайне оновлення LiveData
     }
 
-    // Відредагуємо функцію saveExpenseTransaction
+    fun loadExpenseCategoriesFromSharedPreferences(context: Context) {
+        val sharedPreferences = context.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
+        val categoriesJson = sharedPreferences.getString("categories", null)
+        val categoriesList: List<String> = if (categoriesJson != null) {
+            Gson().fromJson(categoriesJson, object : TypeToken<List<String>>() {}.type)
+        } else {
+            emptyList()
+        }
+        _expenseCategories.value = categoriesList
+    }
+
+    fun saveExpenseCategoriesToSharedPreferences(context: Context, categories: List<String>) {
+        val sharedPreferences = context.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        val categoriesJson = Gson().toJson(categories)
+        editor.putString("categories", categoriesJson)
+        editor.apply()
+        _expenseCategories.value = categories // Негайне оновлення LiveData
+    }
+
+    fun loadIncomeCategoriesFromSharedPreferences(context: Context) {
+        val sharedPreferences = context.getSharedPreferences("IncomePrefs", Context.MODE_PRIVATE)
+        val categoriesJson = sharedPreferences.getString("categories", null)
+        val categoriesList: List<String> = if (categoriesJson != null) {
+            Gson().fromJson(categoriesJson, object : TypeToken<List<String>>() {}.type)
+        } else {
+            emptyList()
+        }
+        _incomeCategories.value = categoriesList
+    }
+
+    fun saveIncomeCategoriesToSharedPreferences(context: Context, categories: List<String>) {
+        val sharedPreferences = context.getSharedPreferences("IncomePrefs", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        val categoriesJson = Gson().toJson(categories)
+        editor.putString("categories", categoriesJson)
+        editor.apply()
+        _incomeCategories.value = categories // Негайне оновлення LiveData
+    }
+
     fun saveExpenseTransaction(context: Context, transaction: Transaction) {
         val sharedPreferences = context.getSharedPreferences("ExpensePrefs", Context.MODE_PRIVATE)
         val gson = Gson()
@@ -262,6 +311,7 @@ class MainViewModel : ViewModel() {
         val updateIntent = Intent("com.example.homeaccountingapp.UPDATE_INCOME")
         LocalBroadcastManager.getInstance(context).sendBroadcast(updateIntent)
     }
+
     // Допоміжний метод для перерахунку витрат за категоріями
     private fun calculateExpenses(transactions: List<Transaction>): Map<String, Double> {
         return transactions.groupBy { it.category }.mapValues { (_, transactions) ->
@@ -299,6 +349,11 @@ class MainViewModel : ViewModel() {
         val updatedIncomes = calculateIncomes(transactions)
         _incomes.value = updatedIncomes
     }
+
+    fun refreshCategories(context: Context) {
+        loadExpenseCategoriesFromSharedPreferences(context)
+        loadIncomeCategoriesFromSharedPreferences(context)
+    }
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -309,7 +364,7 @@ fun MainScreen(
     onNavigateToBorrowed: () -> Unit,
     onNavigateToAllTransactionIncome: () -> Unit,
     onNavigateToAllTransactionExpense: () -> Unit,
-    onNavigateToBudgetPlanning: () -> Unit, // Додано
+    onNavigateToBudgetPlanning: () -> Unit,
     viewModel: MainViewModel = viewModel()
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -327,6 +382,8 @@ fun MainScreen(
 
     val expenses = viewModel.expenses.observeAsState(initial = emptyMap()).value
     val incomes = viewModel.incomes.observeAsState(initial = emptyMap()).value
+    val expenseCategories = viewModel.expenseCategories.observeAsState(initial = emptyList()).value
+    val incomeCategories = viewModel.incomeCategories.observeAsState(initial = emptyList()).value
 
     val totalExpenses = expenses.values.sum()
     val totalIncomes = incomes.values.sum()
@@ -524,7 +581,7 @@ fun MainScreen(
 
                     if (showAddExpenseTransactionDialog) {
                         AddTransactionDialog(
-                            categories = expenses.keys.toList(),
+                            categories = expenseCategories, // Використовуємо категорії витрат з LiveData
                             onDismiss = { showAddExpenseTransactionDialog = false },
                             onSave = { transaction ->
                                 viewModel.saveExpenseTransaction(context, transaction) // Передаємо поточний Context
@@ -536,7 +593,7 @@ fun MainScreen(
 
                     if (showAddIncomeTransactionDialog) {
                         IncomeAddIncomeTransactionDialog(
-                            categories = incomes.keys.toList(),
+                            categories = incomeCategories, // Використовуємо категорії доходів з LiveData
                             onDismiss = { showAddIncomeTransactionDialog = false },
                             onSave = { incomeTransaction ->
                                 viewModel.saveIncomeTransaction(context, incomeTransaction) // Передаємо поточний Context
