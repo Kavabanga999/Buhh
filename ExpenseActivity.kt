@@ -729,8 +729,9 @@ fun AddTransactionDialog(
     var showDatePicker by remember { mutableStateOf(false) }
     var isDropdownExpanded by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+
     if (showDatePicker) {
-        val context = LocalContext.current
         val calendar = Calendar.getInstance()
         DatePickerDialog(
             context,
@@ -856,6 +857,21 @@ fun AddTransactionDialog(
                             modifier = Modifier.background(Color(0xFF2B2B2B))
                         )
                     }
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "Додати категорію",
+                                color = Color.Red,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp // Збільшення розміру шрифту для кращої читабельності
+                            )
+                        },
+                        onClick = {
+                            val intent = Intent(context, ExpenseActivity::class.java)
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.background(Color(0xFF444444))
+                    )
                 }
             }
             OutlinedTextField(
